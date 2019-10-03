@@ -170,6 +170,8 @@ class github_embed {
 		// Issues / Milestones
 		if ( preg_match( '#https?://github.com/([^/]*)/([^/]*)/graphs/contributors/?$#i', $url, $matches ) && ! empty( $matches[2] ) ) {
 			return $this->oembed_github_repo_contributors( $matches[1], $matches[2], $echos );
+		} elseif ( preg_match( '#https?://github.com/([^/]*)/([^/]*)/releases.*$#i', $url, $matches ) && ! empty( $matches[2] ) ) {
+			return $this->oembed_github_repo_releases( $matches[1], $matches[2], $echos );
 		} elseif ( preg_match( '#https?://github.com/([^/]*)/([^/]*)/issues.*$#i', $url, $matches ) && ! empty( $matches[2] ) ) {
 			if ( preg_match( '#issues.?milestone=([0-9]*)#i', $url, $milestones ) ) {
 				$milestone = $milestones[1];
@@ -206,6 +208,36 @@ class github_embed {
 		}
 
 		return ob_get_clean();
+	}
+
+	/**
+	 * Retrieve the information from github for a repo, and his releases
+	 * 
+	 */
+	private function oembed_github_repo_releases( $owner, $repository, $ret=false ) {
+		$data               = [
+			'owner_slug'      => $owner,
+			'repo_slug'       => $repository,
+		];
+		$data['repo']       = $this->api->get_repo( $owner, $repository );
+		$data['commits']    = $this->api->get_repo_releases( $owner, $repository );
+		$data['logo_class'] = apply_filters( 'wp_github_oembed_logo_class', 'github-logo-mark' );
+
+		$response          = new stdClass();
+		$response->type    = 'rich';
+		$response->width   = '10';
+		$response->height  = '10';
+		$response->version = '1.0';
+		$response->title   = $data['repo']->description;
+		$response->html    = $this->process_template(
+			'repository_releases.php', $data );
+
+		if ($ret){
+			return $response;
+		}
+		header( 'Content-Type: application/json' );
+		echo json_encode( $response );
+		die();
 	}
 
 	/**
